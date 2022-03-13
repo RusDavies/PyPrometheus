@@ -1,0 +1,24 @@
+{
+  "node_disk_read_bytes_total": {
+    "active": true,
+    "deltas": false,
+    "cpd": {
+      "type": "statistical"
+    }
+  },
+  "node_filesystem_avail_bytes": {
+    "active": true,
+    "deltas": false,
+    "cpd": {
+      "type": "statistical"
+    }
+  },
+  "node_load1": {
+    "active": true,
+    "deltas": false,
+    "cpd": {
+      "type": "threshold",
+      "val": 0.5
+    }
+  }
+}
