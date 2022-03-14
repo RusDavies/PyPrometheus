@@ -14,29 +14,35 @@ from pathlib import Path
 
 
 class PrometheusQueryClient:
-    def __init__(self, url, cache_path=None, cache_ttl=3600, ssl_verify=True):
+    def __init__(self, url, cache_path=None, cache_encrypt_at_rest=False, cache_ttl=3600, ssl_verify=True, auto_get_server_metrics=True):
         self.url = url
         self.ssl_verify = ssl_verify
+        self.metrics = None
 
-        # Dynamically generate the _do_query_cache function. 
-        if(cache_path):
-            @memoize(DiskCacheBackend(Path(cache_path)), maxttl=cache_ttl)
-            def _do_query_cached(self, path, params):
-                return self._do_query_direct(path, params)
+        # Dynamically generate the _do_query_cache function, with or without caching. 
+        if(cache_path and False):
+            @memoize(DiskCacheBackend(cache_path, encrypt_at_rest=cache_encrypt_at_rest), maxttl=cache_ttl, is_class_method=True)
+            def query_function(self, path, params):
+                return self.__do_query_direct(self, path, params)
+        else:
+            def query_function(self, path, params):
+                return self.__do_query_direct(self, path, params)
+        setattr(self, '__query_function', query_function)
 
-            setattr(self.__class__, '_do_query_direct', self._do_query) # Rename the self._do_query method as self._do_query_direct
-            setattr(self.__class__, '_do_query', _do_query_cached)      # Set the caching wrapper as self._do_query
-
-        self._get_all_metrics()
+        if(auto_get_server_metrics):
+            self._get_all_metrics()
 
 
-    def _do_query(self, path, params):
+    def __do_query_direct(self, path, params):
         resp = requests.get(urljoin(self.url, path), params=params, verify=self.ssl_verify)
         response = resp.json()
         if response['status'] != 'success':
             raise RuntimeError('{errorType}: {error}'.format_map(response))
         return response['data']
 
+    def _do_query(self, path, params):
+        results = self.__query_function(path, params)
+        return results 
 
     def _get_all_metrics(self):
         resp = requests.get(self.url + '/api/v1/label/__name__/values', verify=self.ssl_verify)
@@ -58,12 +64,23 @@ class PrometheusQueryClient:
         return results
 
 
+    @staticmethod
+    def _datetime_to_str(t):
+        return t.strftime('%Y-%m-%dT%H:%M:%SZ') if (isinstance(t, datetime)) else t
+
 
     def query_range(self, query, start, end, step, timeout=None):
+        # Make sure our start and end times are as strings rather than 
+        start = PrometheusQueryClient._datetime_to_str(start)
+        end   = PrometheusQueryClient._datetime_to_str(end)
+
+        # Build the params 
         params = {'query': query, 'start': start, 'end': end, 'step': step}
-        if (timeout):
+        if (timeout and not params.get('timeout', False)): # FIXME: This test doesn't work. Always does the update
            params.update({'timeout': timeout})
 
+        # Run the query. 
+        # TODO: Externalize the api string
         results = self._do_query('api/v1/query_range', params)
         
         return results
@@ -91,6 +108,7 @@ class PrometheusQueryClient:
         if ( ((enddt.timestamp() - startdt.timestamp()) / 500) > 11000):
             step = '{}s'.format( np.floor((enddt.timestamp() - startdt.timestamp()) / 11000) )
             print('Warning: step size too small. Setting to {}s'.format(step))
+
 
         results = self.query_range(query, start, end, step)
         
