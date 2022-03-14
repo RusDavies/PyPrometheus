@@ -3,6 +3,7 @@ from PyPrometheus import Prometheus
 from pathlib import Path
 import urllib3
 from datetime import datetime, timedelta
+import json
 
 urllib3.disable_warnings()
 
@@ -21,13 +22,24 @@ class TestPyPrometheus(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        # FIXME: Fragile test. Hardcoded endpoint.
-        # FIXME: Fragile test. Assumes a the endpoint is available
-        cls.api_url = "https://azlappjaegrs1.mfcgd.com/prometheus/" 
-        cls.ssl_verify = False 
-        cls.configfile = Path('./lib/blakemere/test/metrics_conf.json')
-        cls.filename   = Path('./lib/blakemere/test/testdata.csv')
-        cls.cache_path = Path('./test/TestPyJaegerAnalysis/.prometheus_cache/')
+        with open('./test/config_test_TestPyPrometheus.json', 'r') as file:
+            tmp = file.read()
+            cls.test_config = json.loads(tmp)
+
+        # Fixup file and path strings into Path objects
+        for item in ['cache_path', 'metrics_config_file']:
+            cls.test_config[item]  = Path(cls.test_config[item])
+
+        # Get our metrics configuration 
+        with open(cls.test_config['metrics_config_file'], 'r') as file:
+            tmp = file.read()
+            cls.metrics = json.loads(tmp)
+
+        cls.api_url    = cls.test_config['url']
+        cls.ssl_verify = cls.test_config['ssl_verify'] 
+        cls.configfile = cls.test_config['metrics_config_file']
+        cls.filename   = cls.test_config['test_data']
+        cls.cache_path = cls.test_config['cache_path']
 
         return    
 

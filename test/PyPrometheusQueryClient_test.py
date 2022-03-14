@@ -23,7 +23,7 @@ class TestPyPrometheusQueryClient(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Get our test configuration 
-        with open('./test/config_test.json', 'r') as file:
+        with open('./test/config_test_PyPrometheusQueryClient.json', 'r') as file:
             tmp = file.read()
             cls.test_config = json.loads(tmp)
 
