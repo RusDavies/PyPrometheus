@@ -1,0 +1,8 @@
+{
+    "url":                      "https://azlappjaegrs1.mfcgd.com/prometheus/",
+    "ssl_verify":               false, 
+    "cache_encrypt_at_rest":    false,
+    "metrics_config_file":      "./test/config_metrics.json",
+    "cache_path":               "./test/PyPrometheusQueryClient/prometheus_cache/",
+    "test_data":                "./lib/blakemere/test/testdata.csv"
+}
